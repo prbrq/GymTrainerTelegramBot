@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "GymTrainerTelegramBot": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

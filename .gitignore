@@ -484,4 +484,4 @@ $RECYCLE.BIN/
 *.swp
 
 # Added by user 
-GymTrainerTelegramBot/config.json
+appsettings.Development.json

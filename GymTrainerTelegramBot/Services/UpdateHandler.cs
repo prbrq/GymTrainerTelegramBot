@@ -1,3 +1,5 @@
+using GymTrainerTelegramBot.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -9,7 +11,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace GymTrainerTelegramBot.Services;
 
-public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger) : IUpdateHandler
+public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, ApplicationContext context) : IUpdateHandler
 {
     public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
@@ -44,9 +46,29 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
             "/keyboard" => SendReplyKeyboard(msg),
             "/remove" => RemoveKeyboard(msg),
             "/throw" => FailingHandler(msg),
+            "/test_db" => TestDatabaseContext(msg),
             _ => Usage(msg)
         });
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
+    }
+
+    private async Task<Message> TestDatabaseContext(Message msg)
+    {
+        var workout = new Workout
+        {
+            Time = DateTime.Now,
+        };
+
+        await context.Workouts.AddAsync(workout);
+
+        await context.SaveChangesAsync();
+
+        var workouts = await context.Workouts
+            .ToListAsync();
+
+        var messageText = workouts.Select(w => $"{w.Id} {w.Time} {w.CustomerId}");
+
+        return await bot.SendTextMessageAsync(msg.Chat, string.Join('\n', messageText));
     }
 
     async Task<Message> Usage(Message msg)
@@ -57,6 +79,7 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
                 /keyboard       - send keyboard buttons
                 /remove         - remove keyboard buttons
                 /throw          - what happens if handler fails
+                /test_db        - test database
             """;
         return await bot.SendTextMessageAsync(msg.Chat, usage, parseMode: ParseMode.Html, replyMarkup: new ReplyKeyboardRemove());
     }

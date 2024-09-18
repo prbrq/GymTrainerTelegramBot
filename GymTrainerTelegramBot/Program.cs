@@ -4,6 +4,10 @@ using GymTrainerTelegramBot;
 using GymTrainerTelegramBot.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using GymTrainerTelegramBot.Models;
+using Microsoft.EntityFrameworkCore;
+
+Directory.CreateDirectory("Resources");
 
 IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
@@ -18,6 +22,9 @@ IHost host = Host.CreateDefaultBuilder(args)
                     var options = new TelegramBotClientOptions(botConfiguration.BotToken);
                     return new TelegramBotClient(options, httpClient);
                 });
+
+        services.AddDbContext<ApplicationContext>(options =>
+            options.UseSqlite($"Data Source={Path.Combine("Resources", "db")}"));
 
         services.AddScoped<UpdateHandler>();
         services.AddScoped<ReceiverService>();

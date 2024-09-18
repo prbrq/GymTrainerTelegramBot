@@ -4,16 +4,11 @@ namespace GymTrainerTelegramBot.Models;
 
 public class ApplicationContext : DbContext
 {
-    public DbSet<Workout> Workouts { get; set; }
-
-    public ApplicationContext()
+    public ApplicationContext(DbContextOptions<ApplicationContext> options)
+        : base(options)
     {
-        Database.EnsureDeleted();
         Database.EnsureCreated();
     }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder.UseSqlite("Data Source=db");
-    }
+    public DbSet<Workout> Workouts { get; set; }
 }

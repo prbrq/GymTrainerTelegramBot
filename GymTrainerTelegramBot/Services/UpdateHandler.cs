@@ -47,7 +47,7 @@ public class UpdateHandler(
         if (msg.Text is not { } messageText)
             return;
 
-        var nextMessageProcessing = await chainService.GetNextMessageProcessingAsync(msg.Chat.Id);
+        var nextMessageProcessing = chainService.GetNextMessageProcessing(msg.Chat.Id);
 
         Message sentMessage;
 
@@ -66,13 +66,7 @@ public class UpdateHandler(
         }
         else
         {
-            sentMessage = nextMessageProcessing switch
-            {
-                "TestChain_FirstName" => await TestChain_FirstName(msg),
-                "TestChain_MiddleName" => await TestChain_MiddleName(msg),
-                "TestChain_LastName" => await TestChain_LastName(msg),
-                _ => throw new NotImplementedException()
-            };
+            sentMessage = await nextMessageProcessing(msg);
         }
 
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
@@ -81,36 +75,36 @@ public class UpdateHandler(
 
     private async Task<Message> TestChain(Message msg)
     {
-        await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_FirstName");
+        chainService.SetNextMessageProcessing(msg.Chat.Id, TestChain_FirstName);
 
         return await bot.SendTextMessageAsync(msg.Chat, "Ваше имя?");
     }
 
     private async Task<Message> TestChain_FirstName(Message msg)
     {
-        await chainService.SaveChainMessageAsync(msg.Chat.Id, "FirstName", msg.Text);
-        await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_MiddleName");
+        chainService.SaveChainMessage(msg.Chat.Id, "FirstName", msg.Text);
+        chainService.SetNextMessageProcessing(msg.Chat.Id, TestChain_MiddleName);
 
         return await bot.SendTextMessageAsync(msg.Chat, "Ваше отчество?");
     }
 
     private async Task<Message> TestChain_MiddleName(Message msg)
     {
-        await chainService.SaveChainMessageAsync(msg.Chat.Id, "MiddleName", msg.Text);
-        await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_LastName");
+        chainService.SaveChainMessage(msg.Chat.Id, "MiddleName", msg.Text);
+        chainService.SetNextMessageProcessing(msg.Chat.Id, TestChain_LastName);
 
         return await bot.SendTextMessageAsync(msg.Chat, "Ваша фамилия?");
     }
 
     private async Task<Message> TestChain_LastName(Message msg)
     {
-        await chainService.SaveChainMessageAsync(msg.Chat.Id, "LastName", msg.Text);
+        chainService.SaveChainMessage(msg.Chat.Id, "LastName", msg.Text);
 
-        var chainMessages = await chainService.LoadChainMessagesAsync(msg.Chat.Id);
+        var chainMessages = chainService.LoadChainMessages(msg.Chat.Id);
 
         var fullName = $"{chainMessages["FirstName"]} {chainMessages["MiddleName"]} {chainMessages["LastName"]}";
 
-        await chainService.ClearAsync(msg.Chat.Id);
+        chainService.Clear(msg.Chat.Id);
 
         return await bot.SendTextMessageAsync(msg.Chat, $"Вау! Вас зовут {fullName}.");
     }

@@ -1,14 +1,16 @@
+using Telegram.Bot.Types;
+
 namespace GymTrainerTelegramBot.Abstract;
 
 public interface IChainService
 {
-    Task SetNextMessageProcessingAsync(long chatId, string method);
+    void SetNextMessageProcessing(long chatId, Func<Message, Task<Message>> method);
 
-    Task<string?> GetNextMessageProcessingAsync(long chatId);
+    Func<Message, Task<Message>>? GetNextMessageProcessing(long chatId);
 
-    Task SaveChainMessageAsync(long chatId, string messageKey, string? messageValue);
+    void SaveChainMessage(long chatId, string messageKey, string? messageValue);
 
-    Task<Dictionary<string, string?>> LoadChainMessagesAsync(long chatId);
+    Dictionary<string, string?> LoadChainMessages(long chatId);
 
-    Task ClearAsync(long chatId);
+    void Clear(long chatId);
 }

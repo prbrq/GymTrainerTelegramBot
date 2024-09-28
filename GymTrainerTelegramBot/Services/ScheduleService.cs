@@ -21,7 +21,6 @@ public class ScheduleService(ApplicationContext context): IScheduleService
         {
             if (lunchTimeRange.Contains(timePoint))
             {
-                // TODO: Проверить
                 continue;
             }
 
@@ -193,7 +192,7 @@ public class ScheduleService(ApplicationContext context): IScheduleService
 
         public bool Contains(TimePoint timePoint)
         {
-            if (StartTimePoint >= timePoint && EndTimePoint < timePoint)
+            if (timePoint >= StartTimePoint && timePoint < EndTimePoint)
             {
                 return true;
             }

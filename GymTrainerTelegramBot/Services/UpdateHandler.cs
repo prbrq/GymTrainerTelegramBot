@@ -1,6 +1,4 @@
 using GymTrainerTelegramBot.Abstract;
-using GymTrainerTelegramBot.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -72,13 +70,6 @@ public class UpdateHandler(
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
     }
 
-    private async Task<Message> ShowSchedule(Message msg)
-    {
-        scheduleService.CreateWorkoutsIfNotExists();
-
-        return await bot.SendTextMessageAsync(msg.Chat, "Выполнено");
-    }
-
     private async Task<Message> TestChain(Message msg)
     {
         chainService.SetNextMessageProcessing(msg.Chat.Id, TestChain_FirstName);
@@ -126,6 +117,19 @@ public class UpdateHandler(
                 /test_db        - test database
             """;
         return await bot.SendTextMessageAsync(msg.Chat, usage, parseMode: ParseMode.Html, replyMarkup: new ReplyKeyboardRemove());
+    }
+
+    private async Task<Message> ShowSchedule(Message msg)
+    {
+        await scheduleService.CreateWorkoutsIfNotExistsAsync();
+
+        var availableDates = await scheduleService.GetAvailableDatesAsync();
+
+        var inlineMarkup = new InlineKeyboardMarkup();
+
+        availableDates.ForEach(d => inlineMarkup.AddNewRow($"📅 {d}"));
+
+        return await bot.SendTextMessageAsync(msg.Chat, "Доступные даты:", replyMarkup: inlineMarkup);
     }
 
     async Task<Message> SendInlineKeyboard(Message msg)

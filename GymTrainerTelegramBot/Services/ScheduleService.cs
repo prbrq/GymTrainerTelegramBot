@@ -1,11 +1,12 @@
 using GymTrainerTelegramBot.Abstract;
 using GymTrainerTelegramBot.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace GymTrainerTelegramBot.Services;
 
 public class ScheduleService(ApplicationContext context): IScheduleService
 {
-    public void CreateWorkoutsIfNotExists()
+    public async Task CreateWorkoutsIfNotExistsAsync()
     {
         var beginningDate = DateOnly.FromDateTime(DateTime.Now);
         var endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7)); // TODO: Конфигуркция
@@ -15,17 +16,66 @@ public class ScheduleService(ApplicationContext context): IScheduleService
 
         var lunchTimeRange = new TimeRange(new TimePoint(15, 0), new TimePoint(16, 0)); // TODO: Конфигуркция
 
-        var timePoints = TimePoint.Enumerate(beginningTimePoint, endTimePoint, 1, 0);
+        var timePoints = TimePoint.GetTimePointsInRange(beginningTimePoint, endTimePoint, 1, 0);
 
-        foreach (var timePoint in timePoints)
+        var dates = GetDatesInRange(beginningDate, endDate);
+
+        var existingLastDate = await context.Workouts
+            .Select(w => w.Date)
+            .OrderByDescending(w => w)
+            .FirstOrDefaultAsync();
+
+        foreach (var date in dates.Where(d => d > existingLastDate))
         {
-            if (lunchTimeRange.Contains(timePoint))
+            foreach (var timePoint in timePoints)
             {
-                continue;
-            }
+                if (lunchTimeRange.Contains(timePoint))
+                {
+                    continue;
+                }
 
-            Console.WriteLine(timePoint.Hour + ":" + timePoint.Minute);
+                var workout = new Workout 
+                {
+                    Date = date,
+                    Hour = timePoint.Hour,
+                    Minute = timePoint.Minute,
+                };
+
+                context.Workouts.Add(workout);
+            }
         }
+
+        context.SaveChanges();
+    }
+
+    private static IEnumerable<DateOnly> GetDatesInRange(DateOnly start, DateOnly end)
+    {
+        var result = new List<DateOnly>();
+
+        var date = start;
+
+        while (date <= end)
+        {
+            result.Add(date);
+            date = date.AddDays(1);
+        }
+
+        return result;
+    }
+
+    public async Task<List<string>> GetAvailableDatesAsync()
+    {
+        var existingAvailableDates = await context.Workouts
+            .Select(w => w.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync();
+        
+        var existingAvailableDatesString = existingAvailableDates
+            .Select(d => d.ToString("dd.MM.yyyy"))
+            .ToList();
+
+        return existingAvailableDatesString;
     }
 
     private class TimePoint
@@ -68,7 +118,7 @@ public class ScheduleService(ApplicationContext context): IScheduleService
             Minute = minute;
         }
 
-        public static IEnumerable<TimePoint> Enumerate(TimePoint start, TimePoint end, int HourStep, int MinuteStep)
+        public static IEnumerable<TimePoint> GetTimePointsInRange(TimePoint start, TimePoint end, int HourStep, int MinuteStep)
         {
             var result = new List<TimePoint>();
 

@@ -2,5 +2,7 @@ namespace GymTrainerTelegramBot.Abstract;
 
 public interface IScheduleService
 {
-    void CreateWorkoutsIfNotExists();
+    Task CreateWorkoutsIfNotExistsAsync();
+
+    Task<List<string>> GetAvailableDatesAsync();
 }

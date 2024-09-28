@@ -2,9 +2,11 @@ namespace GymTrainerTelegramBot.Models;
 
 public class Workout
 {
-    public int Id { get; set; }
+    public DateOnly Date { get; set; }
 
-    public DateTime Time { get; set; }
+    public int Hour { get; set; }
 
-    public int? CustomerId { get; set; }
+    public int Minute { get; set; }
+
+    public int? ChatId { get; set; }
 }

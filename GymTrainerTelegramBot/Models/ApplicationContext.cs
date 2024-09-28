@@ -12,4 +12,10 @@ public class ApplicationContext : DbContext
     }
 
     public DbSet<Workout> Workouts { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Workout>()
+            .HasKey(w => new { w.Date, w.Hour, w.Minute });
+    }
 }

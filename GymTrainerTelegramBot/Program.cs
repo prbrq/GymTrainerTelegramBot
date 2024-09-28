@@ -32,6 +32,7 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddScoped<ReceiverService>();
         services.AddHostedService<PollingService>();
         services.AddScoped<IChainService, ChainService>();
+        services.AddScoped<IScheduleService, ScheduleService>();
     })
     .Build();
 

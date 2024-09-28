@@ -15,8 +15,8 @@ namespace GymTrainerTelegramBot.Services;
 public class UpdateHandler(
     ITelegramBotClient bot, 
     ILogger<UpdateHandler> logger, 
-    ApplicationContext context,
-    IChainService chainService) 
+    IChainService chainService,
+    IScheduleService scheduleService) 
         : IUpdateHandler
 {
     public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
@@ -59,8 +59,8 @@ public class UpdateHandler(
                 "/keyboard" => SendReplyKeyboard(msg),
                 "/remove" => RemoveKeyboard(msg),
                 "/throw" => FailingHandler(msg),
-                "/test_db" => TestDatabaseContext(msg),
                 "/chain" => TestChain(msg),
+                "/schedule" => ShowSchedule(msg),
                 _ => Usage(msg)
             });
         }
@@ -72,6 +72,12 @@ public class UpdateHandler(
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
     }
 
+    private async Task<Message> ShowSchedule(Message msg)
+    {
+        scheduleService.CreateWorkoutsIfNotExists();
+
+        return await bot.SendTextMessageAsync(msg.Chat, "Выполнено");
+    }
 
     private async Task<Message> TestChain(Message msg)
     {
@@ -107,25 +113,6 @@ public class UpdateHandler(
         chainService.Clear(msg.Chat.Id);
 
         return await bot.SendTextMessageAsync(msg.Chat, $"Вау! Вас зовут {fullName}.");
-    }
-
-    private async Task<Message> TestDatabaseContext(Message msg)
-    {
-        var workout = new Workout
-        {
-            Time = DateTime.Now,
-        };
-
-        await context.Workouts.AddAsync(workout);
-
-        await context.SaveChangesAsync();
-
-        var workouts = await context.Workouts
-            .ToListAsync();
-
-        var messageText = workouts.Select(w => $"{w.Id} {w.Time} {w.CustomerId}");
-
-        return await bot.SendTextMessageAsync(msg.Chat, string.Join('\n', messageText));
     }
 
     async Task<Message> Usage(Message msg)

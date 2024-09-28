@@ -2,7 +2,6 @@ using GymTrainerTelegramBot.Abstract;
 using GymTrainerTelegramBot.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SQLitePCL;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -89,6 +88,7 @@ public class UpdateHandler(
 
     private async Task<Message> TestChain_FirstName(Message msg)
     {
+        await chainService.SaveChainMessageAsync(msg.Chat.Id, "FirstName", msg.Text);
         await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_MiddleName");
 
         return await bot.SendTextMessageAsync(msg.Chat, "Ваше отчество?");
@@ -96,6 +96,7 @@ public class UpdateHandler(
 
     private async Task<Message> TestChain_MiddleName(Message msg)
     {
+        await chainService.SaveChainMessageAsync(msg.Chat.Id, "MiddleName", msg.Text);
         await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_LastName");
 
         return await bot.SendTextMessageAsync(msg.Chat, "Ваша фамилия?");
@@ -103,7 +104,15 @@ public class UpdateHandler(
 
     private async Task<Message> TestChain_LastName(Message msg)
     {
-        return await bot.SendTextMessageAsync(msg.Chat, "Вау! Скорее всего вы ввели ваше имя, отчетсво и фамилию.");
+        await chainService.SaveChainMessageAsync(msg.Chat.Id, "LastName", msg.Text);
+
+        var chainMessages = await chainService.LoadChainMessagesAsync(msg.Chat.Id);
+
+        var fullName = $"{chainMessages["FirstName"]} {chainMessages["MiddleName"]} {chainMessages["LastName"]}";
+
+        await chainService.ClearAsync(msg.Chat.Id);
+
+        return await bot.SendTextMessageAsync(msg.Chat, $"Вау! Вас зовут {fullName}.");
     }
 
     private async Task<Message> TestDatabaseContext(Message msg)

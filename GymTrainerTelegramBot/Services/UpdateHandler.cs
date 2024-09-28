@@ -1,6 +1,8 @@
+using GymTrainerTelegramBot.Abstract;
 using GymTrainerTelegramBot.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SQLitePCL;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -11,7 +13,12 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace GymTrainerTelegramBot.Services;
 
-public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, ApplicationContext context) : IUpdateHandler
+public class UpdateHandler(
+    ITelegramBotClient bot, 
+    ILogger<UpdateHandler> logger, 
+    ApplicationContext context,
+    IChainService chainService) 
+        : IUpdateHandler
 {
     public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
@@ -37,19 +44,66 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
     private async Task OnMessage(Message msg)
     {
         logger.LogInformation("Receive message type: {MessageType}", msg.Type);
+
         if (msg.Text is not { } messageText)
             return;
 
-        Message sentMessage = await (messageText.Split(' ')[0] switch
+        var nextMessageProcessing = await chainService.GetNextMessageProcessingAsync(msg.Chat.Id);
+
+        Message sentMessage;
+
+        if (nextMessageProcessing == null)
         {
-            "/inline_buttons" => SendInlineKeyboard(msg),
-            "/keyboard" => SendReplyKeyboard(msg),
-            "/remove" => RemoveKeyboard(msg),
-            "/throw" => FailingHandler(msg),
-            "/test_db" => TestDatabaseContext(msg),
-            _ => Usage(msg)
-        });
+            sentMessage = await (messageText.Split(' ')[0] switch
+            {
+                "/inline_buttons" => SendInlineKeyboard(msg),
+                "/keyboard" => SendReplyKeyboard(msg),
+                "/remove" => RemoveKeyboard(msg),
+                "/throw" => FailingHandler(msg),
+                "/test_db" => TestDatabaseContext(msg),
+                "/chain" => TestChain(msg),
+                _ => Usage(msg)
+            });
+        }
+        else
+        {
+            sentMessage = nextMessageProcessing switch
+            {
+                "TestChain_FirstName" => await TestChain_FirstName(msg),
+                "TestChain_MiddleName" => await TestChain_MiddleName(msg),
+                "TestChain_LastName" => await TestChain_LastName(msg),
+                _ => throw new NotImplementedException()
+            };
+        }
+
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
+    }
+
+
+    private async Task<Message> TestChain(Message msg)
+    {
+        await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_FirstName");
+
+        return await bot.SendTextMessageAsync(msg.Chat, "Ваше имя?");
+    }
+
+    private async Task<Message> TestChain_FirstName(Message msg)
+    {
+        await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_MiddleName");
+
+        return await bot.SendTextMessageAsync(msg.Chat, "Ваше отчество?");
+    }
+
+    private async Task<Message> TestChain_MiddleName(Message msg)
+    {
+        await chainService.SetNextMessageProcessingAsync(msg.Chat.Id, "TestChain_LastName");
+
+        return await bot.SendTextMessageAsync(msg.Chat, "Ваша фамилия?");
+    }
+
+    private async Task<Message> TestChain_LastName(Message msg)
+    {
+        return await bot.SendTextMessageAsync(msg.Chat, "Вау! Скорее всего вы ввели ваше имя, отчетсво и фамилию.");
     }
 
     private async Task<Message> TestDatabaseContext(Message msg)
